@@ -3,6 +3,8 @@ package com.scc.dao;
 import com.scc.model.User;
 
 import java.sql.*;
+import java.util.ArrayList;
+import java.util.List;
 
 public class UserDao {
 
@@ -80,5 +82,71 @@ public class UserDao {
         return null;
     }
 
+    public List<User> getAllUsers() {
+        List<User> usersList = new ArrayList<>();
+        String sql = "SELECT id, username, password, roles, status FROM users";
+
+        try(Connection conn = DatabaseConnection.getConnection();
+            Statement stmt = conn.createStatement();
+            ResultSet rs = stmt.executeQuery(sql)){
+            while (rs.next()){
+                usersList.add(new User(
+                        rs.getInt("id"),
+                        rs.getString("username"),
+                        rs.getString("password"),
+                        rs.getString("roles"),
+                        rs.getString("status")
+                ));
+            }
+        } catch (SQLException e){
+            System.err.println("Error fetching all users: " + e.getMessage());
+        }
+
+        return usersList;
+    }
+
+    public  List<User> getPendingUser(){
+        List<User> pendingList = new ArrayList<>();
+        String sql = "SELECT * FROM users WHERE status = 'PENDING'";
+
+        try(Connection conn = DatabaseConnection.getConnection()){
+            Statement stmt = conn.createStatement();
+            ResultSet rs = stmt.executeQuery(sql);
+
+            while(rs.next()){
+                pendingList.add(new User(
+                        rs.getInt("id"),
+                        rs.getString("username"),
+                        rs.getString("password"),
+                        rs.getString("roles"),
+                        rs.getString("status")
+                ));
+            }
+        }catch (SQLException e){
+            System.out.println("Error Fetching User: "+e.getMessage());
+        }
+        return pendingList;
+    }
+
+    public boolean approveUser(int userID){
+        String sql = "UPDATE users SET status = 'APPROVED' WHERE id = ?";
+
+        try(Connection conn = DatabaseConnection.getConnection()){
+            PreparedStatement pstmt = conn.prepareStatement(sql);
+
+            pstmt.setInt(1, userID);
+            int rowsUpdated = pstmt.executeUpdate();
+
+            if(rowsUpdated > 0 ){
+                System.out.println(" ->USER ID: "+userID+" APPROVED SUCCESSFULLY!");
+                return  true;
+            }else {
+                System.out.println("ID NOT FOUND.");
+            }
+        }catch (SQLException e){
+            System.out.println("Error Fetching User: "+e.getMessage());
+        }
+        return  false;
+    }
 
 }
