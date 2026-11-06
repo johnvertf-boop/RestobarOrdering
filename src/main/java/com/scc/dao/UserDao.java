@@ -105,7 +105,7 @@ public class UserDao {
         return usersList;
     }
 
-    public  List<User> getPendingUser(){
+    public List<User> getPendingUser(){
         List<User> pendingList = new ArrayList<>();
         String sql = "SELECT * FROM users WHERE status = 'PENDING'";
 
@@ -131,22 +131,44 @@ public class UserDao {
     public boolean approveUser(int userID){
         String sql = "UPDATE users SET status = 'APPROVED' WHERE id = ?";
 
-        try(Connection conn = DatabaseConnection.getConnection()){
-            PreparedStatement pstmt = conn.prepareStatement(sql);
+        try(Connection conn = DatabaseConnection.getConnection();
+            PreparedStatement pstmt = conn.prepareStatement(sql)) {
 
             pstmt.setInt(1, userID);
             int rowsUpdated = pstmt.executeUpdate();
 
             if(rowsUpdated > 0 ){
-                System.out.println(" ->USER ID: "+userID+" APPROVED SUCCESSFULLY!");
-                return  true;
+                System.out.println(" -> USER ID: "+userID+" APPROVED SUCCESSFULLY!");
+                return true;
             }else {
                 System.out.println("ID NOT FOUND.");
             }
         }catch (SQLException e){
-            System.out.println("Error Fetching User: "+e.getMessage());
+            System.out.println("Error Approving User: "+e.getMessage());
         }
-        return  false;
+        return false;
     }
 
+    public boolean updateUserRoleAndStatus(int userId, String newRole, String newStatus) {
+        String sql = "UPDATE users SET roles = ?, status = ? WHERE id = ?";
+
+        try (Connection conn = DatabaseConnection.getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+
+            pstmt.setString(1, newRole.toUpperCase());
+            pstmt.setString(2, newStatus.toUpperCase());
+            pstmt.setInt(3, userId);
+
+            int rowsUpdated = pstmt.executeUpdate();
+            if (rowsUpdated > 0) {
+                System.out.println(" -> USER ID: " + userId + " UPDATED SUCCESSFULLY!");
+                return true;
+            } else {
+                System.out.println("[ERROR] User ID not found.");
+            }
+        } catch (SQLException e) {
+            System.err.println("Error updating user role and status: " + e.getMessage());
+        }
+        return false;
+    }
 }
