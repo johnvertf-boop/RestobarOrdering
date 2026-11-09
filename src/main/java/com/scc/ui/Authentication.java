@@ -6,7 +6,7 @@ import com.scc.model.User;
 
 import java.util.Scanner;
 
-public class Authentication {
+public class    Authentication {
     private final UserDao userDao;
     private final ActivityLogDao activityLogDao;
     private final Scanner sc;
