@@ -1,17 +1,16 @@
 package com.scc.model;
 
-import java.sql.Timestamp;
-
 public record ActivityLog(
         int logId,
         int userId,
         String actionType,
         String description,
-        Timestamp timestamp
+        Integer orderId,
+        String timestamp
 ) {
     @Override
     public String toString() {
-        return String.format("[%d] User ID: %d | Type: %s | Description: %s | Time: %s",
-                logId, userId, actionType, description, timestamp);
+        return String.format("[%d] User ID: %d | Type: %s | Description: %s | Order: %s | Time: %s",
+                logId, userId, actionType, description, orderId == null ? "-" : orderId, timestamp);
     }
 }

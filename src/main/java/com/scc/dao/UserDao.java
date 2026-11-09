@@ -9,8 +9,7 @@ import java.util.List;
 public class UserDao {
 
     public UserDao() {
-        try (Connection conn = DatabaseConnection.getConnection();
-             Statement stmt = conn.createStatement()) {
+        try (Connection conn = DatabaseConnection.getConnection()) {
             defaultAdminGenerator(conn);
         } catch (SQLException e) {
             System.err.println("Error default seeding admin: " + e.getMessage());
@@ -24,7 +23,9 @@ public class UserDao {
         try (Statement stmt = conn.createStatement();
              ResultSet rs = stmt.executeQuery(checkSql)) {
             if (rs.next() && rs.getInt(1) == 0) {
-                stmt.executeUpdate(insertSql);
+                try (Statement ins = conn.createStatement()) {
+                    ins.executeUpdate(insertSql);
+                }
                 System.out.println(" -> Default Admin created <-");
             }
         } catch (SQLException e) {
@@ -32,8 +33,18 @@ public class UserDao {
         }
     }
 
+    /** Self-registration: account waits for admin approval. */
     public boolean registerUser(String username, String password, String role) {
-        String sql = "INSERT INTO users(username, password, roles, status) VALUES(?, ?, ?, 'PENDING')";
+        return insertUser(username, password, role, "PENDING", true);
+    }
+
+    /** Admin-created account: approved immediately. */
+    public boolean addUser(String username, String password, String role) {
+        return insertUser(username, password, role, "APPROVED", false);
+    }
+
+    private boolean insertUser(String username, String password, String role, String status, boolean showMessage) {
+        String sql = "INSERT INTO users(username, password, roles, status) VALUES(?, ?, ?, ?)";
 
         try (Connection conn = DatabaseConnection.getConnection();
              PreparedStatement pstmt = conn.prepareStatement(sql)) {
@@ -41,11 +52,18 @@ public class UserDao {
             pstmt.setString(1, username);
             pstmt.setString(2, password);
             pstmt.setString(3, role.toUpperCase());
+            pstmt.setString(4, status);
             pstmt.executeUpdate();
-            System.out.println("SUCCESSFUL REGISTRATION, waiting for approval.");
+            if (showMessage) {
+                System.out.println("SUCCESSFUL REGISTRATION, waiting for approval.");
+            }
             return true;
         } catch (SQLException e) {
-            System.err.println("FAILED: " + e.getMessage());
+            if (e.getMessage() != null && e.getMessage().contains("UNIQUE")) {
+                System.err.println("FAILED: Username already exists.");
+            } else {
+                System.err.println("FAILED: " + e.getMessage());
+            }
             return false;
         }
     }
@@ -65,13 +83,11 @@ public class UserDao {
                         System.out.println("> Account is pending. Waiting for approval. < ");
                         return null;
                     }
-                    return new User(
-                            rs.getInt("id"),
-                            rs.getString("username"),
-                            rs.getString("password"),
-                            rs.getString("roles"),
-                            status
-                    );
+                    if ("INACTIVE".equalsIgnoreCase(status)) {
+                        System.out.println("> Account is deactivated. Contact the administrator. <");
+                        return null;
+                    }
+                    return mapUser(rs);
                 } else {
                     System.out.println(" > Invalid Username or Password");
                 }
@@ -82,69 +98,54 @@ public class UserDao {
         return null;
     }
 
+    private User mapUser(ResultSet rs) throws SQLException {
+        return new User(
+                rs.getInt("id"),
+                rs.getString("username"),
+                rs.getString("password"),
+                rs.getString("roles"),
+                rs.getString("status"));
+    }
+
     public List<User> getAllUsers() {
-        List<User> usersList = new ArrayList<>();
-        String sql = "SELECT id, username, password, roles, status FROM users";
-
-        try(Connection conn = DatabaseConnection.getConnection();
-            Statement stmt = conn.createStatement();
-            ResultSet rs = stmt.executeQuery(sql)){
-            while (rs.next()){
-                usersList.add(new User(
-                        rs.getInt("id"),
-                        rs.getString("username"),
-                        rs.getString("password"),
-                        rs.getString("roles"),
-                        rs.getString("status")
-                ));
-            }
-        } catch (SQLException e){
-            System.err.println("Error fetching all users: " + e.getMessage());
-        }
-
-        return usersList;
+        return queryUsers("SELECT id, username, password, roles, status FROM users ORDER BY id");
     }
 
-    public List<User> getPendingUser(){
-        List<User> pendingList = new ArrayList<>();
-        String sql = "SELECT * FROM users WHERE status = 'PENDING'";
-
-        try(Connection conn = DatabaseConnection.getConnection()){
-            Statement stmt = conn.createStatement();
-            ResultSet rs = stmt.executeQuery(sql);
-
-            while(rs.next()){
-                pendingList.add(new User(
-                        rs.getInt("id"),
-                        rs.getString("username"),
-                        rs.getString("password"),
-                        rs.getString("roles"),
-                        rs.getString("status")
-                ));
-            }
-        }catch (SQLException e){
-            System.out.println("Error Fetching User: "+e.getMessage());
-        }
-        return pendingList;
+    public List<User> getPendingUser() {
+        return queryUsers("SELECT id, username, password, roles, status FROM users WHERE status = 'PENDING' ORDER BY id");
     }
 
-    public boolean approveUser(int userID){
+    private List<User> queryUsers(String sql) {
+        List<User> list = new ArrayList<>();
+        try (Connection conn = DatabaseConnection.getConnection();
+             Statement stmt = conn.createStatement();
+             ResultSet rs = stmt.executeQuery(sql)) {
+            while (rs.next()) {
+                list.add(mapUser(rs));
+            }
+        } catch (SQLException e) {
+            System.err.println("Error fetching users: " + e.getMessage());
+        }
+        return list;
+    }
+
+    public boolean approveUser(int userID) {
         String sql = "UPDATE users SET status = 'APPROVED' WHERE id = ?";
 
-        try(Connection conn = DatabaseConnection.getConnection();
-            PreparedStatement pstmt = conn.prepareStatement(sql)) {
+        try (Connection conn = DatabaseConnection.getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
 
             pstmt.setInt(1, userID);
             int rowsUpdated = pstmt.executeUpdate();
 
-            if(rowsUpdated > 0 ){
-                System.out.println(" -> USER ID: "+userID+" APPROVED SUCCESSFULLY!");
+            if (rowsUpdated > 0) {
+                System.out.println(" -> USER ID: " + userID + " APPROVED SUCCESSFULLY!");
                 return true;
-            }else {
+            } else {
                 System.out.println("ID NOT FOUND.");
             }
-        }catch (SQLException e){
-            System.out.println("Error Approving User: "+e.getMessage());
+        } catch (SQLException e) {
+            System.out.println("Error Approving User: " + e.getMessage());
         }
         return false;
     }
@@ -170,5 +171,35 @@ public class UserDao {
             System.err.println("Error updating user role and status: " + e.getMessage());
         }
         return false;
+    }
+
+    /**
+     * Removes a user. Accounts that already have orders or activity logs are only
+     * deactivated so that history is preserved. Returns "DELETED", "DEACTIVATED" or null.
+     */
+    public String deleteUser(int userId) {
+        String usedSql = "SELECT (SELECT COUNT(*) FROM orders WHERE user_id = ?) + "
+                + "(SELECT COUNT(*) FROM activity_logs WHERE user_id = ?)";
+        try (Connection conn = DatabaseConnection.getConnection()) {
+            boolean used;
+            try (PreparedStatement ps = conn.prepareStatement(usedSql)) {
+                ps.setInt(1, userId);
+                ps.setInt(2, userId);
+                try (ResultSet rs = ps.executeQuery()) {
+                    used = rs.next() && rs.getInt(1) > 0;
+                }
+            }
+            String sql = used ? "UPDATE users SET status = 'INACTIVE' WHERE id = ?"
+                    : "DELETE FROM users WHERE id = ?";
+            try (PreparedStatement ps = conn.prepareStatement(sql)) {
+                ps.setInt(1, userId);
+                if (ps.executeUpdate() > 0) {
+                    return used ? "DEACTIVATED" : "DELETED";
+                }
+            }
+        } catch (SQLException e) {
+            System.err.println("Error deleting user: " + e.getMessage());
+        }
+        return null;
     }
 }
