@@ -32,37 +32,57 @@ public class AdminMenu {
             System.out.println("==================================");
             System.out.println("    >>>   ADMIN DASHBOARD  <<<    ");
             System.out.println("==================================");
-            System.out.println(" 1. View all Users");
-            System.out.println(" 2. View Pending User Approvals");
-            System.out.println(" 3. Approve User");
-            System.out.println(" 4. Add New User");
-            System.out.println(" 5. Update User Role / Status");
-            System.out.println(" 6. Delete / Deactivate User");
-            System.out.println(" 7. Manage Products");
-            System.out.println(" 8. Manage Tables");
-            System.out.println(" 9. View Orders (Active)");
-            System.out.println("10. Transaction History");
-            System.out.println("11. Cancel Order / Remove Cancelled Orders");
-            System.out.println("12. View System Audit Logs");
-            System.out.println("13. Logout");
-            String select = in.readLine("Choose an Option (1-13): ");
+            System.out.println("1. Manage Users");
+            System.out.println("2. Manage Products");
+            System.out.println("3. Manage Tables");
+            System.out.println("4. View Orders (Active)");
+            System.out.println("5. Transaction History");
+            System.out.println("6. Cancel Order / Remove Cancelled Orders");
+            System.out.println("7. View System Audit Logs");
+            System.out.println("8. Logout");
+            String select = in.readLine("Choose an Option (1-8): ");
             switch (select) {
+                case "1" -> manageUsers(admin);
+                case "2" -> productUi.manage(admin);
+                case "3" -> tableUi.manage(admin);
+                case "4" -> orderUi.viewActiveOrders();
+                case "5" -> orderUi.history();
+                case "6" -> adminOrderTools();
+                case "7" -> viewAuditLogsMenu();
+                case "8" -> {
+                    activityLogDao.logAction(admin.id(), "USER_LOGOUT", "Admin " + admin.username() + " logged out.");
+                    loggedIn = false;
+                }
+                default -> System.out.println("-> [ERROR] Invalid Option.");
+            }
+        }
+    }
+
+    // --- Manage Users Sub-Menu ---
+
+    private void manageUsers(User admin) {
+        boolean inUserMenu = true;
+        while (inUserMenu) {
+            System.out.println("\n----------------------------------");
+            System.out.println("      >>> MANAGE USERS <<<        ");
+            System.out.println("----------------------------------");
+            System.out.println("1. View all Users");
+            System.out.println("2. View Pending User Approvals");
+            System.out.println("3. Approve User");
+            System.out.println("4. Add New User");
+            System.out.println("5. Update User Role / Status");
+            System.out.println("6. Delete / Deactivate User");
+            System.out.println("0. Return to Main Dashboard");
+
+            String choice = in.readLine("Choose an Option: ");
+            switch (choice) {
                 case "1" -> viewAllUser();
                 case "2" -> viewPendingUser();
                 case "3" -> approveUser(admin);
                 case "4" -> addUser(admin);
                 case "5" -> updateUserRoleAndStatus(admin);
                 case "6" -> deleteUser(admin);
-                case "7" -> productUi.manage(admin);
-                case "8" -> tableUi.manage(admin);
-                case "9" -> orderUi.viewActiveOrders();
-                case "10" -> orderUi.history();
-                case "11" -> adminOrderTools();
-                case "12" -> viewAuditLogsMenu();
-                case "13" -> {
-                    activityLogDao.logAction(admin.id(), "USER_LOGOUT", "Admin " + admin.username() + " logged out.");
-                    loggedIn = false;
-                }
+                case "0" -> inUserMenu = false;
                 default -> System.out.println("-> [ERROR] Invalid Option.");
             }
         }
