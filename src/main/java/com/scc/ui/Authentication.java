@@ -18,21 +18,29 @@ public class Authentication {
     }
 
     public void start() {
-        System.out.println("==========================================");
-        System.out.println(" >  RESTOBAR ORDERING AND TABLE SYSTEM  < ");
-        System.out.println("==========================================");
-        System.out.println("1. Login");
-        System.out.println("2. Register");
-        System.out.println("3. Exit");
-        System.out.print("Select: ");
-        String select = sc.nextLine();
-        System.out.println("==========================================");
+        boolean running = true;
 
-        switch (select) {
-            case "1" -> handleLogin();
-            case "2" -> handleRegister();
-            case "3" -> System.out.println("Exiting System. THANK YOU!");
-            default -> System.out.println("Invalid selection. Please try again.");
+        while (running) {
+            System.out.println("==========================================");
+            System.out.println(" >  RESTOBAR ORDERING AND TABLE SYSTEM  < ");
+            System.out.println("==========================================");
+            System.out.println("1. Login");
+            System.out.println("2. Register");
+            System.out.println("3. Exit");
+            System.out.print("Select: ");
+            String select = sc.nextLine();
+            System.out.println("==========================================");
+
+            switch (select) {
+                case "1" -> handleLogin();
+                case "2" -> handleRegister();
+                case "3" -> {
+                    System.out.println("Exiting System. THANK YOU!");
+                    running = false;
+                }
+                default -> System.out.println("Invalid selection. Please try again.");
+            }
+            System.out.println(); // Add a blank space between menu loops for readability
         }
     }
 
@@ -76,6 +84,8 @@ public class Authentication {
                 case "ADMIN" -> new AdminMenu(userDao, activityLogDao, sc).display(user);
                 default -> System.out.println("Account roles not found!");
             }
+        } else {
+            System.out.println(" > Invalid Username or Password. Returning to main menu.");
         }
     }
 }
